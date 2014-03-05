@@ -1,7 +1,8 @@
 /*	
- *	CSSrefresh v1.0.1
+ *	CSSrefresh v2.0.1
  *	
  *	Copyright (c) 2012 Fred Heusschen
+ *	
  *	www.frebsite.nl
  *
  *	Dual licensed under the MIT and GPL licenses.
@@ -11,73 +12,6 @@
 
 (function() {
 
-	var phpjs = {
-
-		array_filter: function( arr, func )
-		{
-			var retObj = {}; 
-			for ( var k in arr )
-			{
-				if ( func( arr[ k ] ) )
-				{
-					retObj[ k ] = arr[ k ];
-				}
-			}
-			return retObj;
-		},
-		filemtime: function( file )
-		{
-			var headers = this.get_headers( file, 1 );
-			return ( headers && headers[ 'Last-Modified' ] && Date.parse( headers[ 'Last-Modified' ] ) / 1000 ) || false;
-	    },
-	    get_headers: function( url, format )
-	    {
-			var req = window.ActiveXObject ? new ActiveXObject( 'Microsoft.XMLHTTP' ) : new XMLHttpRequest();
-			if ( !req )
-			{
-				throw new Error('XMLHttpRequest not supported.');
-			}
-
-			var tmp, headers, pair, i, j = 0;
-
-			try
-			{
-				req.open( 'HEAD', url, false );
-				req.send( null ); 
-				if ( req.readyState < 3 )
-				{
-					return false;
-				}
-				tmp = req.getAllResponseHeaders();
-				tmp = tmp.split( '\n' );
-				tmp = this.array_filter( tmp, function( value )
-				{
-					return value.toString().substring( 1 ) !== '';
-				});
-				headers = format ? {} : [];
-	
-				for ( i in tmp )
-				{
-					if ( format )
-					{
-						pair = tmp[ i ].toString().split( ':' );
-						headers[ pair.splice( 0, 1 ) ] = pair.join( ':' ).substring( 1 );
-					}
-					else
-					{
-						headers[ j++ ] = tmp[ i ];
-					}
-				}
-	
-				return headers;
-			}
-			catch ( err )
-			{
-				return false;
-			}
-		}
-	};
-
 	var cssRefresh = function() {
 
 		this.reloadFile = function( links )
@@ -85,7 +19,7 @@
 			for ( var a = 0, l = links.length; a < l; a++ )
 			{
 				var link = links[ a ],
-					newTime = phpjs.filemtime( this.getRandom( link.href ) );
+					newTime = this.filemtime( this.getRandom( link.href ) );
 
 				//	has been checked before
 				if ( link.last )
@@ -94,7 +28,14 @@
 					if ( link.last != newTime )
 					{
 						//	reload
-						link.elem.setAttribute( 'href', this.getRandom( link.href ) );
+						if( link.type === 'PrefixFree')
+						{
+							this.reloadPrefixFree(link);
+						}
+						else
+						{
+							link.elem.setAttribute( 'href', this.getRandom( link.href ) );
+						}
 					}
 				}
 
@@ -106,31 +47,100 @@
 				this.reloadFile( links );
 			}, 1000 );
 		};
+		
+		this.filemtime = function( url )
+		{
+			var req = window.ActiveXObject ? new ActiveXObject( 'Microsoft.XMLHTTP' ) : new XMLHttpRequest();
+			if ( !req )
+			{
+				throw new Error('XMLHttpRequest not supported.');
+			}
 
+			try
+			{
+				req.open( 'HEAD', url, false );
+				req.send( null );
+				if ( req.readyState < 3 )
+				{
+					return false;
+				}
+				var headers = req.getAllResponseHeaders();
+				var match = headers.match(/^Last-Modified:(.*)$/m);
+				if(match === null)
+					return false;
+				return Date.parse( match[1] );
+			}
+			catch ( err )
+			{
+				return false;
+			}
+		};
+
+		this.reloadPrefixFree = function( link )
+		{
+			request = new XMLHttpRequest();
+			request.open('GET', this.getRandom( link.href ), true);
+
+			request.onreadystatechange = function()
+			{
+				if (this.readyState === 4)
+				{
+					if (this.status >= 200 && this.status < 400)
+					{
+						link.elem.innerHTML = PrefixFree.prefixCSS(this.responseText);
+					}
+				}
+			};
+
+			request.send();
+			request = null;
+		};
+		
 		this.getHref = function( f )
 		{
-			return f.getAttribute( 'href' ).split( '?' )[ 0 ];
+			return f.getAttribute( 'href' );
 		};
+		
 		this.getRandom = function( f )
 		{
-			return f + '?x=' + Math.random();
+			var sep = ( f.indexOf( '?' ) > -1 ? '&' : '?' );
+			return f + sep + 'cssRefresh=' + Math.random();
 		};
 
-
 		var files = document.getElementsByTagName( 'link' ),
-			links = [];
-
-		for ( var a = 0, l = files.length; a < l; a++ )
-		{			
-			var elem = files[ a ],
-				rel = elem.rel;
-			if ( typeof rel != 'string' || rel.length == 0 || rel == 'stylesheet' )
+			links = [], elem, a;
+		
+		for ( a = 0, l = files.length; a < l; a++ )
+		{
+			elem = files[ a ];
+			rel = elem.rel;
+			if ( typeof rel !== 'string' || rel.length === 0 || rel === 'stylesheet' )
 			{
 				links.push({
-					'elem' : elem,
-					'href' : this.getHref( elem ),
-					'last' : false
+					type : 'link',
+					elem : elem,
+					href : this.getHref( elem ),
+					last : false
 				});
+			}
+		}
+		
+		if(window.PrefixFree){
+			var styles = document.getElementsByTagName( 'style' );
+			
+			for ( a = 0, l = styles.length; a < l; a++ )
+			{
+				elem = styles[ a ];
+				href = elem.getAttribute('data-href');
+				if ( typeof href === 'string')
+				{
+					links.push({
+						type : 'PrefixFree',
+						elem : elem,
+						href : href,
+						last : false
+					});
+				}
 			}
 		}
 		this.reloadFile( links );
