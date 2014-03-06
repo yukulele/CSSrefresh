@@ -1,8 +1,7 @@
 /*	
- *	CSSrefresh v2.0.1
+ *	CSSrefresh v3.0.0
  *	
  *	Copyright (c) 2012 Fred Heusschen
- *	
  *	www.frebsite.nl
  *
  *	Dual licensed under the MIT and GPL licenses.
@@ -11,7 +10,6 @@
  */
 
 (function() {
-
 	var cssRefresh = function() {
 
 		this.reloadFile = function( links )
@@ -80,14 +78,35 @@
 		{
 			request = new XMLHttpRequest();
 			request.open('GET', this.getRandom( link.href ), true);
-
 			request.onreadystatechange = function()
 			{
 				if (this.readyState === 4)
 				{
 					if (this.status >= 200 && this.status < 400)
 					{
-						link.elem.innerHTML = PrefixFree.prefixCSS(this.responseText);
+						var css = this.responseText;
+						css = css.replace(/url\(\s*?((?:"|')?)(.+?)\1\s*?\)/gi, function($0, quote, url) {
+							if(/^([a-z]{3,10}:|#)/i.test(url)) { // Absolute & or hash-relative
+								url = $0;
+							}
+							else if(/^\/\//.test(url)) { // Scheme-relative
+								// May contain sequences like /../ and /./ but those DO work
+								url = 'url("' + link.base_scheme + url + '")';
+							}
+							else if(/^\//.test(url)) { // Domain-relative
+								url = 'url("' + link.base_domain + url + '")';
+							}
+							else if(/^\?/.test(url)) { // Query-relative
+								url = 'url("' + link.base_query + url + '")';
+							}
+							else {
+								// Path-relative
+								url = 'url("' + link.base + url + '")';
+							}
+							return url;
+						});
+						
+						link.elem.innerHTML = PrefixFree.prefixCSS(css);
 					}
 				}
 			};
@@ -127,26 +146,31 @@
 		
 		if(window.PrefixFree){
 			var styles = document.getElementsByTagName( 'style' );
-			
+			var link;
 			for ( a = 0, l = styles.length; a < l; a++ )
 			{
 				elem = styles[ a ];
-				href = elem.getAttribute('data-href');
-				if ( typeof href === 'string')
+				href = elem.getAttribute( 'data-href' );
+				if ( typeof href === 'string' )
 				{
-					links.push({
+					link = {
 						type : 'PrefixFree',
 						elem : elem,
 						href : href,
 						last : false
-					});
+					};
+					var url = link.href;
+					link.base = url.replace(/[^\/]+$/, '');
+					link.base_scheme = (/^[a-z]{3,10}:/.exec(link.base) || [''])[0];
+					link.base_domain = (/^[a-z]{3,10}:\/\/[^\/]+/.exec(link.base) || [''])[0];
+					link.base_query = /^([^?]*)\??/.exec(link.href)[1];
+					links.push(link);
 				}
 			}
 		}
+		
 		this.reloadFile( links );
 	};
-
-
+	
 	cssRefresh();
-
 })();
