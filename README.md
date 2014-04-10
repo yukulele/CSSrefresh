@@ -21,5 +21,5 @@ window.onload = function(){
 Copy and past in new bookmark URL:
 
 ```javascript
-javascript:(function(script){script.setAttribute('src','https://rawgithub.com/yukulele/CSSrefresh/master/cssrefresh.js');var head=document.getElementsByTagName('head').appendChild(script);})(document.createElement('script'));
+javascript:(function(script){script.setAttribute('src','https://rawgithub.com/yukulele/CSSrefresh/master/cssrefresh.js');var head=document.querySelector('head').appendChild(script);})(document.createElement('script'));
 ```
