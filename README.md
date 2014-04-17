@@ -7,12 +7,11 @@ Based http://cssrefresh.frebsite.nl/ with <a href="http://leaverou.github.io/pre
 Put <strong>cssrefresh.js</strong> in your <strong>js</strong> directory and add this in `<head>`:
 
 ```html
-<script src="js/cssrefresh.js"></script>
 <script>
 window.onload = function(){
 	var script = document.createElement('script');
 	script.src = "js/cssrefresh.js";
-	document.getElementsByTagName('head').appendChild(script);
+	document.querySelector('head').appendChild(script);
 };
 </script>
 ```
