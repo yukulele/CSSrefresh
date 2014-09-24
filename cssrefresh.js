@@ -10,43 +10,49 @@
  */
 
 (function() {
+	"use strict";
+	
+	var origin = window.location.origin;
+	
 	var cssRefresh = function() {
-
-		this.reloadFile = function( links )
+		
+		var obj = {};
+		obj.reloadFile = function( links )
 		{
 			for ( var a = 0, l = links.length; a < l; a++ )
 			{
-				var link = links[ a ],
-					newTime = this.filemtime( this.getRandom( link.href ) );
-
-				//	has been checked before
-				if ( link.last )
-				{
-					//	has been changed
-					if ( link.last != newTime )
+				var link = links[ a ];
+				var newTime = obj.filemtime( obj.getRandom( link.href ), function(){
+					//	has been checked before
+					if ( link.last )
 					{
-						//	reload
-						if( link.type === 'PrefixFree')
+						//	has been changed
+						if ( link.last != newTime )
 						{
-							this.reloadPrefixFree(link);
-						}
-						else
-						{
-							link.elem.setAttribute( 'href', this.getRandom( link.href ) );
+							//	reload
+							if( link.type === 'PrefixFree')
+							{
+								obj.reloadPrefixFree(link);
+							}
+							else
+							{
+								link.elem.setAttribute( 'href', obj.getRandom( link.href ) );
+							}
 						}
 					}
-				}
 
-				//	set last time checked
-				link.last = newTime;
+					//	set last time checked
+					link.last = newTime;
+				});
+
 			}
 			setTimeout( function()
 			{
-				this.reloadFile( links );
+				obj.reloadFile( links );
 			}, 1000 );
 		};
 		
-		this.filemtime = function( url )
+		obj.filemtime = function( url, callback )
 		{
 			var req = window.ActiveXObject ? new ActiveXObject( 'Microsoft.XMLHTTP' ) : new XMLHttpRequest();
 			if ( !req )
@@ -56,17 +62,21 @@
 
 			try
 			{
-				req.open( 'HEAD', url, false );
+				req.open( 'HEAD', url );
+				req.onreadystatechange = function(e){
+					if(this.readyState !== this.DONE)
+						return;
+					if ( req.readyState < 3 )
+					{
+						return false;
+					}
+					var headers = req.getAllResponseHeaders();
+					var match = headers.match( /^Last-Modified:(.*)$/m );
+					if(match === null)
+						return false;
+					callback( Date.parse( match[1] ) );
+				};
 				req.send( null );
-				if ( req.readyState < 3 )
-				{
-					return false;
-				}
-				var headers = req.getAllResponseHeaders();
-				var match = headers.match(/^Last-Modified:(.*)$/m);
-				if(match === null)
-					return false;
-				return Date.parse( match[1] );
 			}
 			catch ( err )
 			{
@@ -74,10 +84,10 @@
 			}
 		};
 
-		this.reloadPrefixFree = function( link )
+		obj.reloadPrefixFree = function( link )
 		{
-			request = new XMLHttpRequest();
-			request.open('GET', this.getRandom( link.href ), true);
+			var request = new XMLHttpRequest();
+			request.open('GET', obj.getRandom( link.href ), true);
 			request.onreadystatechange = function()
 			{
 				if (this.readyState === 4)
@@ -115,19 +125,19 @@
 			request = null;
 		};
 		
-		this.getHref = function( f )
+		obj.getHref = function( f )
 		{
 			return f.getAttribute( 'href' );
 		};
 		
-		this.getRandom = function( f )
+		obj.getRandom = function( f )
 		{
 			var sep = ( f.indexOf( '?' ) > -1 ? '&' : '?' );
 			return f + sep + 'cssRefresh=' + Math.random();
 		};
 
 		var files = document.getElementsByTagName( 'link' ),
-			links = [], elem, a;
+			links = [], href, elem, a, l, rel;
 		
 		for ( a = 0, l = files.length; a < l; a++ )
 		{
@@ -135,10 +145,14 @@
 			rel = elem.rel;
 			if ( typeof rel !== 'string' || rel.length === 0 || rel === 'stylesheet' )
 			{
+				href = obj.getHref( elem );
+				if( href.indexOf(':') != -1 && href.indexOf( origin ) )
+					continue;
+				
 				links.push({
 					type : 'link',
 					elem : elem,
-					href : this.getHref( elem ),
+					href : href,
 					last : false
 				});
 			}
@@ -169,7 +183,7 @@
 			}
 		}
 		
-		this.reloadFile( links );
+		obj.reloadFile( links );
 	};
 	
 	cssRefresh();
