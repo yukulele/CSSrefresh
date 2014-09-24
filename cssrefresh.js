@@ -22,7 +22,7 @@
 			for ( var a = 0, l = links.length; a < l; a++ )
 			{
 				var link = links[ a ];
-				var newTime = obj.filemtime( obj.getRandom( link.href ), function(){
+				obj.filemtime( obj.getRandom( link.href ), function(newTime){
 					//	has been checked before
 					if ( link.last )
 					{
