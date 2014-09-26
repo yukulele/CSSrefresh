@@ -1,5 +1,5 @@
 /*	
- *	CSSrefresh v3.0.0
+ *	CSSrefresh v4.0.0
  *	
  *	Copyright (c) 2012 Fred Heusschen
  *	www.frebsite.nl
@@ -21,29 +21,31 @@
 		{
 			for ( var a = 0, l = links.length; a < l; a++ )
 			{
-				var link = links[ a ];
-				obj.filemtime( obj.getRandom( link.href ), function(newTime){
-					//	has been checked before
-					if ( link.last )
-					{
-						//	has been changed
-						if ( link.last != newTime )
+				(function(){
+					var link = links[ a ];
+					obj.filemtime( obj.getRandom( link.href ), function(newTime){
+						//	has been checked before
+						if ( link.last )
 						{
-							//	reload
-							if( link.type === 'PrefixFree')
+							//	has been changed
+							if ( link.last != newTime )
 							{
-								obj.reloadPrefixFree(link);
-							}
-							else
-							{
-								link.elem.setAttribute( 'href', obj.getRandom( link.href ) );
+								//	reload
+								if( link.type === 'PrefixFree')
+								{
+									obj.reloadPrefixFree(link);
+								}
+								else
+								{
+									link.elem.setAttribute( 'href', obj.getRandom( link.href ) );
+								}
 							}
 						}
-					}
-
-					//	set last time checked
-					link.last = newTime;
-				});
+	
+						//	set last time checked
+						link.last = newTime;
+					});
+				})();
 
 			}
 			setTimeout( function()
